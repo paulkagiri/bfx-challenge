@@ -1,0 +1,19 @@
+{
+  "name": "bfx-challenge",
+  "version": "1.0.0",
+  "description": "A simplified P2P distributed exchange",
+  "main": "src/client.js",
+  "scripts": {
+    "client": "DEBUG=bfx:client node src/client.js",
+    "client:debug": "DEBUG=bfx:* node src/client.js",
+    "prettier": "prettier --config ./.prettierrc.json --loglevel warn --write '**/*.js'",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "Paul",
+  "dependencies": {
+    "grenache-nodejs-http": "^0.7.13",
+    "grenache-nodejs-link": "^1.0.0",
+    "debug": "^4.2.0",
+    "prettier": "^2.1.2"
+  }
+}
