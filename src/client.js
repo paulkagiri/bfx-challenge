@@ -186,3 +186,64 @@ const waitForClientToBeRegistered = async (clientId) => {
     throw new Error("Unable to find the client registered on the Grape");
   }
 };
+
+// Start the client
+(async () => {
+  try {
+    // Request all nodes to lock order submission while the client is synchronizing on the network
+    await askMutexLock(clientId);
+
+    // Announce the client on all services
+    link.startAnnouncing("order:new", service.port, {});
+    link.startAnnouncing("mutex:lock", service.port, {});
+    link.startAnnouncing("mutex:unlock", service.port, {});
+
+    // Ensure the client is accessible to others
+    await waitForClientToBeRegistered(clientId);
+
+    // Sync the order book from another node on startup
+    await syncOrderBook();
+    debug(`Initial order book length: ${orderBook.getOrderBookLength()}`);
+
+    // Release the lock as the client is fully connected and synced
+    await releaseMutexLock(clientId);
+
+    // The client can now be requested by others to synchronize the order book
+    link.startAnnouncing("book:sync", service.port);
+
+    // Start trading by randomly submitting new orders
+    submitRandomOrders();
+  } catch (e) {
+    console.error("Error while starting the trading client", e);
+    process.exit(1);
+  }
+})();
+
+// Handle SIGINT to stop announcing on the Grape when exiting
+process.on("SIGINT", async () => {
+  debug("Stopping the client...");
+  link.stopAnnouncing("order:new", service.port);
+  link.stopAnnouncing("book:sync", service.port);
+  link.stop();
+
+  // Wait for a brief period before exiting to allow for cleanup
+  await setTimeout(2000);
+  process.exit(0);
+});
+
+// Function to randomly submit new orders every 1 to 10 seconds
+// with a price between 10000 and 10100
+// and amount between -0.5 and 0.5
+const submitRandomOrders = async () => {
+  try {
+    const random = Math.random();
+    const delay = 1000 + Math.floor(random * 9000);
+    const price = parseFloat((10000 + random * 100).toFixed(4));
+    const amount = parseFloat((random < 0.5 ? -random : random / 2).toFixed(4));
+    await setTimeout(delay);
+    await submitNewOrder(price, amount);
+  } catch (err) {
+    console.error("submitNewOrder error:", err.message);
+  }
+  submitRandomOrders();
+};
